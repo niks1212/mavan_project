@@ -1,15 +1,19 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven3'   // Use the Maven tool you configured in Jenkins → Global Tool Configuration
+    }
+
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')  // Jenkins credentials ID
-        DOCKER_IMAGE = "niks1212/maven-app"  // change to your Docker Hub repo
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
+        DOCKER_IMAGE = "niks1212/maven-demo-app"
     }
 
     stages {
-        stage('Checkout from GitHub') {
+        stage('Checkout SCM') {
             steps {
-                git branch: 'main', url: 'https://github.com/niks1212/mavan_project.git'
+                checkout scm
             }
         }
 
@@ -21,21 +25,26 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE:$BUILD_NUMBER .'
+                script {
+                    sh 'docker build -t $DOCKER_IMAGE .'
+                }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withDockerRegistry([credentialsId: 'dockerhub-credentials-id', url: '']) {
-                    sh 'docker push $DOCKER_IMAGE:$BUILD_NUMBER'
+                script {
+                    sh "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin"
+                    sh 'docker push $DOCKER_IMAGE'
                 }
             }
         }
 
         stage('Run Docker Container') {
             steps {
-                sh 'docker run -d -p 8080:8080 --name maven-container-$BUILD_NUMBER $DOCKER_IMAGE:$BUILD_NUMBER'
+                script {
+                    sh 'docker run -d -p 8081:8080 --name maven-demo-container $DOCKER_IMAGE'
+                }
             }
         }
     }
