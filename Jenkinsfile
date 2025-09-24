@@ -1,12 +1,8 @@
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.9.4-openjdk-17'  // Maven + Java ready
-            args '-v /root/.m2:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock' // cache Maven deps & allow Docker commands
-        }
-    }
+    agent any
 
     environment {
+        PATH = "/usr/share/maven/bin:${env.PATH}"  // Ensure Maven is found
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
         DOCKER_IMAGE = "niks1212/maven-demo-app"
     }
@@ -25,12 +21,21 @@ pipeline {
         }
 
         stage('Build Docker Image') {
+            when {
+                expression {
+                    // Check if docker is available
+                    sh(script: "which docker", returnStatus: true) == 0
+                }
+            }
             steps {
                 sh "docker build -t $DOCKER_IMAGE ."
             }
         }
 
         stage('Push Docker Image') {
+            when {
+                expression { sh(script: "which docker", returnStatus: true) == 0 }
+            }
             steps {
                 sh "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin"
                 sh "docker push $DOCKER_IMAGE"
@@ -38,6 +43,9 @@ pipeline {
         }
 
         stage('Run Docker Container') {
+            when {
+                expression { sh(script: "which docker", returnStatus: true) == 0 }
+            }
             steps {
                 sh """
                 docker rm -f maven-demo-container || true
@@ -46,7 +54,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             echo 'Pipeline finished'
