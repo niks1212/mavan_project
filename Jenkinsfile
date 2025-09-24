@@ -1,10 +1,14 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'maven:3.9.4-openjdk-17'  // Maven + Java ready
+            args '-v /root/.m2:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock' // cache Maven deps & allow Docker commands
+        }
+    }
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
         DOCKER_IMAGE = "niks1212/maven-demo-app"
-        PATH = "/usr/share/maven/bin:${env.PATH}"  // Add Maven to PATH for this pipeline
     }
 
     stages {
@@ -35,8 +39,17 @@ pipeline {
 
         stage('Run Docker Container') {
             steps {
-                sh "docker run -d -p 8081:8080 --name maven-demo-container $DOCKER_IMAGE || docker restart maven-demo-container"
+                sh """
+                docker rm -f maven-demo-container || true
+                docker run -d -p 8081:8080 --name maven-demo-container $DOCKER_IMAGE
+                """
             }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Pipeline finished'
         }
     }
 }
