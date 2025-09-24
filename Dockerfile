@@ -1,12 +1,12 @@
-# Use OpenJDK base image
-FROM openjdk:11-jdk
+# Use OpenJDK as base
+FROM openjdk:11-jre-slim
 
-# Set working directory
-WORKDIR /app
+# Copy the JAR file built by Maven
+COPY target/*.jar app.jar
 
-# Copy the Maven-built JAR
-COPY target/demo-app-1.0-SNAPSHOT.jar app.jar
+# Expose port
+EXPOSE 8080
 
 # Run the application
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
