@@ -2,56 +2,42 @@ pipeline {
     agent any
 
     environment {
-        // Use the credentials ID you created in Jenkins
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
-        IMAGE_NAME = 'yourdockerhubusername/demo-app'
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')  // Jenkins credentials ID
+        DOCKER_IMAGE = "niks1212/maven-app"  // change to your Docker Hub repo
     }
 
     stages {
-        stage('Pull from GitHub') {
+        stage('Checkout from GitHub') {
             steps {
-                // Pull code from the main branch
-                git branch: 'master', url: 'https://github.com/niks1212/mavan_project.git'
+                git branch: 'main', url: 'https://github.com/niks1212/mavan_project.git'
             }
         }
 
         stage('Build with Maven') {
             steps {
-                // Build the Maven project
-                sh 'mvn clean package'
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                // Build Docker image
-                sh 'docker build -t $IMAGE_NAME:latest .'
+                sh 'docker build -t $DOCKER_IMAGE:$BUILD_NUMBER .'
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                // Login to Docker Hub using credentials
-                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                sh 'docker push $IMAGE_NAME:latest'
+                withDockerRegistry([credentialsId: 'dockerhub-credentials-id', url: '']) {
+                    sh 'docker push $DOCKER_IMAGE:$BUILD_NUMBER'
+                }
             }
         }
 
         stage('Run Docker Container') {
             steps {
-                // Stop and remove old container if exists
-                sh 'docker stop demo-app || true'
-                sh 'docker rm demo-app || true'
-
-                // Run new container
-                sh 'docker run -d -p 8081:8080 --name demo-app $IMAGE_NAME:latest'
+                sh 'docker run -d -p 8080:8080 --name maven-container-$BUILD_NUMBER $DOCKER_IMAGE:$BUILD_NUMBER'
             }
         }
-    }
-
-    triggers {
-        // Automatically trigger on GitHub push
-        githubPush()
     }
 }
 
